@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="ErrorStep" Id="{858799b2-f3f9-45e8-ae72-f37c535cc7a6}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION ErrorStep : UDINT
+VAR_IN_OUT
+	StateVar : UDINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ErrorStep := StateVar := ((StateVar / 10) * 10) + 9;]]></ST>
+    </Implementation>
+    <LineIds Name="ErrorStep">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

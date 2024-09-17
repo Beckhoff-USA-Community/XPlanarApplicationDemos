@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_RotateStation" Id="{d0ee9b9c-eeff-4082-9db1-0bc32eab28c5}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_RotateStation EXTENDS FB_XPlanarStationBase
+VAR
+	_StationAngle  : LREAL;
+	_NumberOfTurns : DINT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Execute" Id="{2be4b8cf-b65d-43e3-92eb-e6a95a99401e}">
+      <Declaration><![CDATA[METHOD Execute
+VAR_INST
+	i			  : UDINT := 1;
+	CommandResult : I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[SUPER^.Execute();
+IF StationState = E_XPlanarStationState.ProcessMover THEN
+	CommandResult := ipCurrentMover.MoveCommand.Rotate(_StationAngle, _NumberOfTurns);
+	IF CommandResult.Done THEN
+		_StationComplete := TRUE;
+	ELSIF CommandResult.Error THEN
+		; //Command returned an error!
+	END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="NumberOfTurns" Id="{9d661a2e-f7f3-4558-afb3-350c215cc0c4}">
+      <Declaration><![CDATA[PROPERTY NumberOfTurns : DINT]]></Declaration>
+      <Set Name="Set" Id="{cad60f88-e9df-4e9a-94e5-e7e43cc8e24a}">
+        <Declaration><![CDATA[VAR
+END_VAR]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_NumberOfTurns := NumberOfTurns;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="StationAngle" Id="{568cd894-6b94-4015-b665-4e2c3332f5de}">
+      <Declaration><![CDATA[PROPERTY StationAngle : LREAL]]></Declaration>
+      <Set Name="Set" Id="{8b016c78-79fe-4d2f-b17c-5ed06ac7ec95}">
+        <Declaration><![CDATA[VAR
+END_VAR]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_StationAngle := StationAngle;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <LineIds Name="FB_RotateStation">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RotateStation.Execute">
+      <LineId Id="23" Count="7" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RotateStation.NumberOfTurns.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RotateStation.StationAngle.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

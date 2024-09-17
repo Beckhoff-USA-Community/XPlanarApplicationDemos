@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_RoutingStation" Id="{d1f931ac-72f8-4dc5-a0d5-c8a34bfee707}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_RoutingStation EXTENDS FB_XPlanarStationBase
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	_OutputA	: I_XplanarStation;
+	_OutputB	: I_XPlanarStation;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Execute" Id="{317fc10b-70df-4800-b6e1-124d9fdfd392}">
+      <Declaration><![CDATA[METHOD Execute
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[SUPER^.Execute(); //Call the base station logic to handle sending and receiving of movers
+
+//When the station is in the Process mover state you can perform any application specific station logic
+IF StationState = E_XPlanarStationState.ProcessMover THEN
+	IF _OutputA <> 0 AND _OutputB <> 0 THEN	
+		CASE ipCurrentMover.MoverIndex OF
+			1, 3:
+				ipNextStation := _OutputA;
+			2, 4:
+				ipNextStation := _OutputB;
+		END_CASE
+		
+		_StationComplete := TRUE;	//Set _StationComplete TRUE when done.  This will be automatically reset when the mover exits
+	END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="OutputA" Id="{199a749e-f95a-4b6d-a7fb-62cd714a449b}">
+      <Declaration><![CDATA[PROPERTY OutputA : I_XPlanarStation]]></Declaration>
+      <Set Name="Set" Id="{a3c98b37-a790-4d7e-a53f-902f71112374}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_OutputA := OutputA;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="OutputB" Id="{714b125d-edd6-456f-b213-a30f84db27fa}">
+      <Declaration><![CDATA[PROPERTY OutputB : I_XPlanarStation]]></Declaration>
+      <Set Name="Set" Id="{d22e7d3e-ca00-4e41-a66f-0b6a0816a096}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_OutputB := OutputB;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <LineIds Name="FB_RoutingStation">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RoutingStation.Execute">
+      <LineId Id="12" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="33" Count="2" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="6" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RoutingStation.OutputA.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_RoutingStation.OutputB.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

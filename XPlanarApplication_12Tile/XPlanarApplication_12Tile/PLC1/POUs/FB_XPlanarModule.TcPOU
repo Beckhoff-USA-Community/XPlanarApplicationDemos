@@ -1,0 +1,473 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_XPlanarModule" Id="{18ed3aa7-c83f-44ce-8119-20fe14cb0cfa}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XPlanarModule EXTENDS FB_PackML_BaseModule
+VAR
+	// Component definitions here
+	XPlanarTable : FB_Component_Xplanar := (Name := 'XPlanarTable');
+
+	//Station Components
+	Station1 : FB_RotateStation	 := (Name := 'Station1'); //Declaration of a custom station
+	Station2 : FB_RoutingStation := (Name := 'Station2');
+	Station3 : FB_RotateStation	 := (Name := 'Station3');
+	Station4 : FB_RotateStation	 := (Name := 'Station4');
+
+	//Helper Vars
+	Mover			  : ARRAY[1..SystemParameters.MOVER_COUNT] OF FB_XPlanarMover;
+	Track			  : ARRAY[1..SystemParameters.TRACK_COUNT] OF FB_XPlanarTrackSegment;
+	TracksInitialized : BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="I_CyclicFB" Id="{769d746d-1ab5-4a6d-8c77-4b1403733257}" />
+    <Folder Name="Methods" Id="{1414b749-8a1b-4539-8751-a9eb98ce9efa}">
+      <Folder Name="Acting States" Id="{f6cfc130-33f5-4b9c-9ed3-b6e57724e54f}" />
+      <Folder Name="HMI" Id="{0f08a4f8-e768-454b-a528-0661effe207e}" />
+      <Folder Name="Waiting States" Id="{ab86d3ba-50da-471d-864b-21041ca20d53}" />
+    </Folder>
+    <Method Name="Aborting" Id="{17e4bd4f-b401-48a2-abdb-1c82c9b91958}" FolderPath="Methods\Acting States\">
+      <Declaration><![CDATA[//! @summary This method contains code which will execute when this PackML module is in the <b>Aborting</b> state
+METHOD PROTECTED Aborting
+VAR
+	i				: UDINT;
+	SubModulesReady : BOOL := TRUE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE DescendantSequenceState OF
+	0:
+		NoStateTasksToComplete := FALSE;
+		NextStep(DescendantSequenceState);
+
+	10:
+		IF XPlanarTable.Abort() THEN
+			StateTasksComplete := TRUE;
+			NextStep(DescendantSequenceState);
+		END_IF
+
+	20:
+		StateTasksComplete := TRUE;
+END_CASE
+
+SUPER^.Aborting();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Clearing" Id="{749d9d49-762f-4674-b533-d711fd25e786}" FolderPath="Methods\Acting States\">
+      <Declaration><![CDATA[//! @summary This method contains code which will execute when this PackML module is in the <b>Clearing</b> state
+METHOD PROTECTED Clearing
+VAR
+	i				: UDINT;
+	SubModulesReady : BOOL := TRUE;
+END_VAR
+
+VAR_INST
+	ipResult : I_PlanarTaskResult;
+END_VAR
+
+(*! <description> <b>Note:</b> The <i>Clear</i> command can also be thought of as a <i>fault reset</i> depite the ambiguity in the naming of the <i>Reset</i> state. 
+<table> 
+	<tr>
+		<th> Previous State </th>
+		<th> Transition In </th>
+		<th> Transition Out </th>
+		<th> Next State  </th> 
+	</tr>
+	<tr>
+		<td> Aborted </td>
+		<td> Clear Command </td> 
+		<td> State Complete </td>
+		<td> Stopped </td> 
+	</tr>
+</table>
+This method is called as required by <c>StateControl()</c>
+</description> 
+
+*)]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE _CurrentMode OF
+	E_PMLUnitMode.ePMLUnitMode_Production:
+		CASE DescendantSequenceState OF
+			0: //Init
+				NoStateTasksToComplete := FALSE;
+
+				//Reset Stations
+				Station1.Reset();
+				Station2.Reset();
+				Station3.Reset();
+				NextStep(DescendantSequenceState);
+
+			10: //Reset XPlanar System
+				IF XPlanarTable.Reset() THEN
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			20: //Enable Group
+				ipResult := XPlanarTable.EnableGroup();
+				IF ipResult.Done THEN
+					NextStep(DescendantSequenceState);
+				ELSIF ipResult.Error THEN
+					ErrorStep(DescendantSequenceState);
+				END_IF
+
+			30: //Clearing complete			
+				StateTasksComplete := TRUE;
+		END_CASE
+
+	E_PMLUnitMode.ePMLUnitMode_Manual:
+		;
+END_CASE
+
+SUPER^.Clearing();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CyclicLogic" Id="{31fa8ff0-2b84-4416-a54a-15ba032d89ac}" FolderPath="I_CyclicFB\">
+      <Declaration><![CDATA[METHOD CyclicLogic
+VAR
+	i : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT _InitComplete THEN
+	_InitComplete := Initialize();
+END_IF
+
+//Add any required cyclic logic here
+
+//Call the base logic
+SUPER^.CyclicLogic();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute" Id="{4a8447c7-4bba-456b-ae99-02b9655bd430}" FolderPath="Methods\Waiting States\">
+      <Declaration><![CDATA[//! @summary This method contains code which will execute when this PackML module is in the <b>Execute</b> state
+METHOD PROTECTED Execute
+VAR
+	i : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE _CurrentMode OF
+	E_PMLUnitMode.ePMLUnitMode_Production:
+		FOR i := 1 TO SystemParameters.STATION_COUNT DO
+			ip.Stations[i].Execute();
+		END_FOR
+
+	E_PMLUnitMode.ePMLUnitMode_Manual:
+		; //Insert logic for Manual Mode here
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="HMIPermissions" Id="{7d2cddec-eedc-414c-8c02-c97cb122267e}" FolderPath="Methods\HMI\">
+      <Declaration><![CDATA[//! @summary Automatically enables and disables HMI control based on the PackML mode
+METHOD PROTECTED HMIPermissions
+
+//! @description This method is called cyclically by <c>CyclicLogic()</c>]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//General Mode Based Monitoring and handling of HMI control
+CASE _CurrentMode OF
+	E_PMLUnitMode.ePMLUnitMode_Production:
+		AllowHMIControl(ThisModuleOnly := FALSE);
+
+	E_PMLUnitMode.ePMLUnitMode_Manual:
+		AllowHMIControl(ThisModuleOnly := FALSE);
+
+	E_PMLUnitMode.ePMLUnitMode_Maintenance:
+		AllowHMIControl(ThisModuleOnly := FALSE);
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialize" Id="{cea669eb-9427-49e9-a099-b64514cc633b}" FolderPath="Methods\">
+      <Declaration><![CDATA[//! @summary Basic module initialization logic
+METHOD PROTECTED Initialize : BOOL;
+VAR
+	i						 : UDINT;
+	varInfo					 : __SYSTEM.VAR_INFO;
+	AllSubUnitsInitialized	 : BOOL := TRUE;
+	AllComponentsInitialized : BOOL := TRUE;
+END_VAR
+
+//! @description This method is called by <c>CyclicLogic()</c> as required]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Initialize := FALSE;
+CASE DescendantSequenceState OF
+	0: //Register Submodules and Components
+		RegisterComponent(XPlanarTable);
+		RegisterComponent(Station1);
+		RegisterComponent(Station2);
+		RegisterComponent(Station3);
+		RegisterComponent(Station4);
+		_LogModeChanges			:= FALSE;
+		_LogStateChanges		:= FALSE;
+		DescendantSequenceState := DescendantSequenceState + 10;
+
+	10: //Set interfaces *This must be done before initializing the base class!
+
+		//Set mover interfaces
+		FOR i := 1 TO SystemParameters.MOVER_COUNT DO
+			Mover[i].MoverIndex := i;
+			ip.Movers[i]		:= Mover[i];
+		END_FOR
+
+		//Set Track Interfaces
+		FOR i := 1 TO SystemParameters.TRACK_COUNT DO
+			ip.Tracks[i] := Track[i];
+		END_FOR
+
+		//Set Station interfaces
+		ip.Stations[1]			:= Station1;
+		ip.Stations[2]			:= Station2;
+		ip.Stations[3]			:= Station3;
+		ip.Stations[4]			:= Station4;
+		DescendantSequenceState := DescendantSequenceState + 10;
+
+	20: //Call Initialize of the base class
+		IF SUPER^.Initialize() THEN
+			DescendantSequenceState := DescendantSequenceState + 10;
+		END_IF
+
+	30:
+		Initialize := TRUE;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Resetting" Id="{31624805-9f24-4846-bb15-1edf775cd7f4}" FolderPath="Methods\Acting States\">
+      <Declaration><![CDATA[METHOD PROTECTED Resetting
+VAR_INST
+	i			 : UDINT;
+	ipTaskResult : I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE _CurrentMode OF
+	E_PMLUnitMode.ePMLUnitMode_Production:
+		CASE DescendantSequenceState OF
+			0: //Init
+				i					   := 1;
+				NoStateTasksToComplete := FALSE;
+				NextStep(DescendantSequenceState);
+
+			10: //Enable Tracks
+				ipTaskResult := XplanarTable.EnableTracks();
+				IF ipTaskResult.Done THEN
+					NextStep(DescendantSequenceState);
+				ELSIF ipTaskResult.Error THEN //An error occured, jump to 'error step'
+					ErrorStep(DescendantSequenceState);
+				END_IF
+
+			20: //Enable Movers
+				ipTaskResult := XPlanarTable.EnableMovers();
+				IF ipTaskResult.Done THEN
+					NextStep(DescendantSequenceState);
+				ELSIF ipTaskResult.Error THEN //An error occured, jump to 'error step'
+					ErrorStep(DescendantSequenceState);
+				END_IF
+
+			30: //Add Tracks to Group
+				ipTaskResult := XPlanarTable.AddTracksToGroup();
+				IF ipTaskResult.Done THEN
+					NextStep(DescendantSequenceState);
+				ELSIF ipTaskResult.Error THEN //An error occured, jump to 'error step'
+					ErrorStep(DescendantSequenceState);
+				END_IF
+
+			40: //Add Movers to Group			
+				ipTaskResult := XPlanarTable.AddMoversToGroup();
+				IF ipTaskResult.Done THEN
+					NextStep(DescendantSequenceState);
+				ELSIF ipTaskResult.Error THEN //An error occured, jump to 'error step'
+					ErrorStep(DescendantSequenceState);
+				END_IF
+
+			50: //Clearing complete
+				StateTasksComplete := TRUE;
+		END_CASE
+END_CASE
+
+SUPER^.Resetting();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetupStations" Id="{472d87c4-f8ee-4679-a5bf-c6f2e3004197}" FolderPath="Methods\">
+      <Declaration><![CDATA[METHOD PRIVATE SetupStations : BOOL
+VAR_INPUT
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Set Required Process Station Initialization Parameters
+Station1.Position.SetValuesXYC(120, 360, 0);
+Station1.Size.x		   := 120;		//Changes the station size in the X plane (optional - Default is 120mm)
+Station1.Size.y		   := 120;		//Changes the station size in the Y plane (optionsl- Default is 120mm)
+Station1.TrackID	   := 1;		//Set Index of the track segment the station resides on if applicable	
+Station1.NextStation   := Station2; //Set the interface for the next station of the mover
+Station1.StationAngle  := 90;
+Station1.NumberOfTurns := 0;
+
+Station2.Position.SetValuesXYC(360, 600, 0);
+Station2.StationType := E_StationType.DecisionPoint; //Set type to DecisionPoint for 'on the fly' processing
+Station2.OutputA := Station3;
+Station2.OutputB := Station4;
+Station2.TrackID	   := 1;
+
+Station3.Position.SetValuesXYC(600, 360, 0);
+Station3.TrackID	   := 2;
+Station3.NextStation   := Station1;
+Station3.StationAngle  := 360;
+Station3.NumberOfTurns := 1;
+
+Station4.Position.SetValuesXYC(840, 360, 0);
+Station4.TrackID	   := 3;
+Station4.NextStation   := Station1;
+Station4.StationAngle  := -90;
+Station4.NumberOfTurns := 0;
+
+//Return TRUE when all necessary station parameters are set
+SetupStations := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Starting" Id="{183f1123-c447-4a86-b202-a4cab71a6c14}" FolderPath="Methods\Acting States\">
+      <Declaration><![CDATA[METHOD PROTECTED Starting
+VAR_INST
+	i		 : UDINT;
+	ipResult : I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE _CurrentMode OF
+	E_PMLUnitMode.ePMLUnitMode_Production:
+		CASE DescendantSequenceState OF
+			0:
+				NoStateTasksToComplete	:= FALSE;
+				DescendantSequenceState := 10;
+				i						:= 1;
+
+			10: //Set Station Parameters
+				SetupStations();
+				NextStep(DescendantSequenceState);
+
+			20: //Cleanup mover queues
+				FOR i := 1 TO SystemParameters.STATION_COUNT DO
+					ip.Stations[i].MoverQueue.Dequeue();
+				END_FOR
+
+				NextStep(DescendantSequenceState);
+
+			30: //Set some initial application move dynamics
+				FOR i := 1 TO SystemParameters.MOVER_COUNT DO
+					ip.Movers[i].Dynamics.Movement.Accel	:= 2000;
+					ip.Movers[i].Dynamics.Movement.Decel	:= 2000;
+					ip.Movers[i].Dynamics.Movement.Velocity := 300;
+					ip.Movers[i].Dynamics.Movement.Jerk		:= 50000;
+					ip.Movers[i].Dynamics.Rotation.Accel	:= 5000;
+					ip.Movers[i].Dynamics.Rotation.Decel	:= 5000;
+					ip.Movers[i].Dynamics.Rotation.Velocity := 300;
+					ip.Movers[i].Dynamics.Rotation.Jerk		:= 100000;
+					ip.Movers[i].Dynamics.Tilt.Accel		:= 5000;
+					ip.Movers[i].Dynamics.Tilt.Decel		:= 5000;
+					ip.Movers[i].Dynamics.Tilt.Velocity		:= 300;
+					ip.Movers[i].Dynamics.Tilt.Jerk			:= 100000;
+					ip.Movers[i].Gap						:= 250;
+					ip.Movers[i].Destination				:= 0;
+				END_FOR
+
+				i := 1;
+				NextStep(DescendantSequenceState);
+
+			40: //Join Movers to nearest track
+				IF i <= SystemParameters.MOVER_COUNT THEN
+					ipResult := ip.Movers[i].MoveCommand.JoinClosestTrack(FALSE);
+					IF ipResult.Done THEN
+						NextMinorStep(DescendantSequenceState);
+					ELSIF ipResult.Error THEN
+						ErrorStep(DescendantSequenceState);
+					END_IF
+				ELSE
+					i := 1;
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			41: //Check Mover Count
+				IF i <= SystemParameters.MOVER_COUNT THEN
+					i						:= i + 1;
+					DescendantSequenceState := 40;
+				ELSE
+					i := 1;
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			50: //Send Movers around to station 1
+				IF i <= SystemParameters.MOVER_COUNT THEN
+					ipResult := ip.Movers[i].MoveCommand.SendToStation(ip.Stations[1]);
+					IF ipResult.Busy THEN
+						NextMinorStep(DescendantSequenceState);
+					ELSIF ipResult.Error THEN
+						ErrorStep(DescendantSequenceState);
+					END_IF
+				ELSE
+					i := 1;
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			51: //Check Mover Count
+				IF i <= SystemParameters.MOVER_COUNT THEN
+					i						:= i + 1;
+					DescendantSequenceState := 50;
+				ELSE
+					i := 1;
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			60:
+				StateTasksComplete := TRUE;
+		END_CASE
+
+	E_PMLUnitMode.ePMLUnitMode_Manual:
+		;
+END_CASE
+
+SUPER^.Starting();]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_XPlanarModule">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.Aborting">
+      <LineId Id="597" Count="14" />
+      <LineId Id="31" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.Clearing">
+      <LineId Id="1224" Count="32" />
+      <LineId Id="31" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.CyclicLogic">
+      <LineId Id="833" Count="6" />
+      <LineId Id="693" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.Execute">
+      <LineId Id="624" Count="7" />
+      <LineId Id="89" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.HMIPermissions">
+      <LineId Id="141" Count="9" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.Initialize">
+      <LineId Id="1762" Count="6" />
+      <LineId Id="1808" Count="0" />
+      <LineId Id="1769" Count="20" />
+      <LineId Id="1809" Count="0" />
+      <LineId Id="1790" Count="8" />
+      <LineId Id="11" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.Resetting">
+      <LineId Id="1120" Count="44" />
+      <LineId Id="29" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.SetupStations">
+      <LineId Id="552" Count="7" />
+      <LineId Id="578" Count="4" />
+      <LineId Id="577" Count="0" />
+      <LineId Id="560" Count="0" />
+      <LineId Id="562" Count="4" />
+      <LineId Id="576" Count="0" />
+      <LineId Id="567" Count="6" />
+      <LineId Id="504" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_XPlanarModule.Starting">
+      <LineId Id="3322" Count="91" />
+      <LineId Id="466" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
