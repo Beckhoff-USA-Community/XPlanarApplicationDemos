@@ -1,7 +1,6 @@
 # About This Repository
 
--- UPDATE THIS SECTION -- 
-This Repository is a is a collection of example project for using the XPlanar Application library
+This Repository is a is a collection of example projects for using the XPlanar Application library
 
 This sample is created by [Beckhoff Automation LLC.](https://www.beckhoff.com/en-us/), and is provided as-is under the Zero-Clause BSD license.
 
