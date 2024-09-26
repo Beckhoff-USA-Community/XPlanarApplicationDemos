@@ -312,8 +312,9 @@ SetupStations := TRUE;]]></ST>
     <Method Name="Starting" Id="{183f1123-c447-4a86-b202-a4cab71a6c14}" FolderPath="Methods\Acting States\">
       <Declaration><![CDATA[METHOD PROTECTED Starting
 VAR_INST
-	i		 : UDINT;
-	ipResult : I_PlanarTaskResult;
+	i		  : UDINT;
+	ipResult  : I_PlanarTaskResult;
+	InitTimer : TON;
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[CASE _CurrentMode OF
@@ -349,16 +350,16 @@ END_VAR]]></Declaration>
 					ip.Movers[i].Dynamics.Tilt.Decel		:= 5000;
 					ip.Movers[i].Dynamics.Tilt.Velocity		:= 300;
 					ip.Movers[i].Dynamics.Tilt.Jerk			:= 100000;
-					ip.Movers[i].Gap						:= 300;
+					ip.Movers[i].Gap						:= 250;
 					ip.Movers[i].Destination				:= 0;
 				END_FOR
 
 				i := 1;
 				NextStep(DescendantSequenceState);
 
-			40: //Join Movers to nearest track
+			40: //Square Up movers
 				IF i <= SystemParameters.MOVER_COUNT THEN
-					ipResult := ip.Movers[i].MoveCommand.JoinClosestTrack(FALSE);
+					ipResult := ip.Movers[i].MoveCommand.SquareUp();
 					IF ipResult.Done THEN
 						NextMinorStep(DescendantSequenceState);
 					ELSIF ipResult.Error THEN
@@ -367,7 +368,7 @@ END_VAR]]></Declaration>
 				ELSE
 					i := 1;
 					NextStep(DescendantSequenceState);
-				END_IF
+				END_IF				
 
 			41: //Check Mover Count
 				IF i <= SystemParameters.MOVER_COUNT THEN
@@ -378,10 +379,10 @@ END_VAR]]></Declaration>
 					NextStep(DescendantSequenceState);
 				END_IF
 
-			50: //Send Movers around to station 1
+			50: //Join Movers to nearest track
 				IF i <= SystemParameters.MOVER_COUNT THEN
-					ipResult := ip.Movers[i].MoveCommand.SendToStation(ip.Stations[1]);
-					IF ipResult.Busy THEN
+					ipResult := ip.Movers[i].MoveCommand.JoinClosestTrack(FALSE);
+					IF ipResult.Done THEN
 						NextMinorStep(DescendantSequenceState);
 					ELSIF ipResult.Error THEN
 						ErrorStep(DescendantSequenceState);
@@ -400,8 +401,34 @@ END_VAR]]></Declaration>
 					NextStep(DescendantSequenceState);
 				END_IF
 
-			60:
-				StateTasksComplete := TRUE;
+			60: //Send Movers around to station 1
+				IF i <= SystemParameters.MOVER_COUNT THEN
+					ipResult := ip.Movers[i].MoveCommand.SendToStation(ip.Stations[1]);
+					IF ipResult.Busy THEN
+						NextMinorStep(DescendantSequenceState);
+					ELSIF ipResult.Error THEN
+						ErrorStep(DescendantSequenceState);
+					END_IF
+				ELSE
+					i := 1;
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			61: //Check Mover Count
+				IF i <= SystemParameters.MOVER_COUNT THEN
+					i						:= i + 1;
+					DescendantSequenceState := 60;
+				ELSE
+					i := 1;
+					NextStep(DescendantSequenceState);
+				END_IF
+
+			70: //Let recovery get moving before jumping to execute
+				InitTimer(IN := TRUE, PT := T#500MS);
+				IF InitTimer.Q THEN
+					InitTimer(IN := FALSE);
+					StateTasksComplete := TRUE;
+				END_IF
 		END_CASE
 
 	E_PMLUnitMode.ePMLUnitMode_Manual:
@@ -450,7 +477,7 @@ SUPER^.Starting();]]></ST>
       <LineId Id="504" Count="0" />
     </LineIds>
     <LineIds Name="FB_XPlanarModule.Starting">
-      <LineId Id="3322" Count="91" />
+      <LineId Id="3418" Count="117" />
       <LineId Id="466" Count="0" />
     </LineIds>
   </POU>
