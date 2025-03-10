@@ -13,8 +13,8 @@ For general TwinCAT and Beckhoff product support, please contact your local Beck
 
 The following components must be installed to run sample code:
 
-- [TE1000 TwinCAT 3 Engineering](https://www.beckhoff.com/en-en/products/automation/twincat/te1xxx-twincat-3-engineering/te1000.html) version 3.1.4024.0 or higher
-- [TF5890 TwinCAT 3 XPlanar](https://www.beckhoff.com/en-us/products/motion/xplanar-planar-motor-system/xplanar-software/tf5890.html)
-- [TF5430 TwinCAT 3 Advanced Motion Pack](https://www.beckhoff.com/en-us/products/motion/xplanar-planar-motor-system/xplanar-software/tf5430.html)
+- [TE1000 TwinCAT 3 Engineering](https://www.beckhoff.com/te1000) version 3.1.4024.0 or higher
+- [TF5890 TwinCAT 3 XPlanar](https://www.beckhoff.com/tf5890)
+- [TF5430 TwinCAT 3 Advanced Motion Pack](https://www.beckhoff.com/tf5430)
 - [SPT Base Types library](https://github.com/Beckhoff-USA-Community/SPT-Libraries)
 - [XPlanarApplication library](https://github.com/Beckhoff-USA-Community/XPlanarApplicationLibrary)
