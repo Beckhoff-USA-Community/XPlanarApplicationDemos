@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <DUT Name="ST_EstopIO" Id="{10035b54-a3ce-42da-8c7d-b9fe2d40e362}">
+    <Declaration><![CDATA[TYPE ST_EstopIO :
+STRUCT
+	ch1	AT%I* 	:BIT;
+	Ch2	AT%I*	:BIT;	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

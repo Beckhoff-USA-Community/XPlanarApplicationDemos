@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="F_SetAllMoversRotation" Id="{50e85050-42e9-41cd-9929-3a6834614d12}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_SetAllMoversRotation : BOOL
+VAR_INPUT
+	Set			:ST_MoveDynamics;
+END_VAR
+VAR
+	i			:UDINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FOR i:=1 TO XPlanar.MoverCount DO
+	IF ip.Movers[i]<>0 THEN
+		ip.Movers[i].Dynamics.Rotation:=Set;		
+	END_IF			
+END_FOR	]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

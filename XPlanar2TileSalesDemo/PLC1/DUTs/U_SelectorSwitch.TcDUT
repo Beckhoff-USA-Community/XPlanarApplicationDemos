@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <DUT Name="U_SelectorSwitch" Id="{adaacf73-0095-4c3a-a1d8-eb9d456a7bbe}">
+    <Declaration><![CDATA[TYPE U_SelectorSwitch :
+UNION
+	IO :ST_SelectorSwitchIO;
+	Pos	:E_SelectorSwitchPos;
+END_UNION
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

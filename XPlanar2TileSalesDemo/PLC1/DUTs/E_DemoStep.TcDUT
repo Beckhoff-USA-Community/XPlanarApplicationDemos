@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <DUT Name="E_DemoStep" Id="{ec2e79b1-db13-496a-827a-4cb926db1174}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE E_DemoStep :
+(
+	Init := 0,
+	WaitForSwitch,
+	DetectMovers,
+	SortMovers,	
+	Enabling,
+	SquareUpMovers,
+	MoveToSeqenceStartPos,
+	JoinTrack,
+	FigureEight,
+	LeaveTrack,
+	GoToOpositeCorner,
+	FlyBy,
+	MoveAroundPerimeter,
+	MoveToCenterOfTiles,
+	RotateInverse,
+	Spin,
+	Lift,
+	Tilt,
+	Disable
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

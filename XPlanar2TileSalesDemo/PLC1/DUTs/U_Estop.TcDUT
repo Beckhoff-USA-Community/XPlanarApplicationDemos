@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <DUT Name="U_Estop" Id="{891a96e7-55b8-4bcf-8053-9416c82b7dc9}">
+    <Declaration><![CDATA[TYPE U_Estop :
+UNION
+	Pos	:E_EStop;	
+	IO 	:ST_EstopIO;
+END_UNION
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
