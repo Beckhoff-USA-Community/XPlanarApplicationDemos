@@ -5,9 +5,9 @@
 VAR_GLOBAL
 	// Mover Velocity
 	MoverVelo		: LREAL := 200;
-	MoverGap		: LREAL := 180; // Do not exceed 250 mm, or go lower then default
+	MoverGap		: LREAL := 180; 
 	// Mover Rotation Velocity
-	MoverSpinVelo	: LREAL := 1000;
+	MoverSpinVelo	: LREAL := 500;
 	// Station 2 Mover Index
 	Indx			: UDINT;
 END_VAR]]></Declaration>

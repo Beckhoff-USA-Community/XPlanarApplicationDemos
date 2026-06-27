@@ -119,7 +119,7 @@
       <Resolution>Tc3_XPlanarUtility, * (Beckhoff Automation GmbH)</Resolution>
     </PlaceholderResolution>
     <PlaceholderResolution Include="XPlanarApplication">
-      <Resolution>XPlanarApplication, 0.102.5 (Beckhoff Automation LLC)</Resolution>
+      <Resolution>XPlanarApplication, * (Beckhoff Automation LLC)</Resolution>
     </PlaceholderResolution>
   </ItemGroup>
   <ItemGroup>

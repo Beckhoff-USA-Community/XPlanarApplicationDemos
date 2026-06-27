@@ -5,7 +5,6 @@
 VAR
 	_StationAngle  : LREAL;
 	_NumberOfTurns : DINT;
-
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -22,7 +21,7 @@ END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[CommandResult := Mover.MoveCommand.Rotate(_StationAngle, _NumberOfTurns);
 IF CommandResult.Done THEN
-	Execute := TRUE;
+	Execute := TRUE;  //Set Execute to TRUE when process is complete and station base will send mover to next station.
 ELSIF CommandResult.Error THEN
 	; //Command returned an error, DO SOMETHING!
 END_IF

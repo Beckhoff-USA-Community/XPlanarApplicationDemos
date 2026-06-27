@@ -5699,15 +5699,6 @@
 			</SubItem>
 		</DataType>
 		<DataType>
-			<Name GUID="{71B58F72-0E49-50EB-B8E4-1CCD027538EC}" IecBaseType="true" AutoDeleteType="true">ARRAY [1..8] OF BOOL</Name>
-			<BitSize>64</BitSize>
-			<BaseType GUID="{18071995-0000-0000-0000-000000000030}">BOOL</BaseType>
-			<ArrayInfo>
-				<LBound>1</LBound>
-				<Elements>8</Elements>
-			</ArrayInfo>
-		</DataType>
-		<DataType>
 			<Name GUID="{1500FFCE-0727-F0FF-6AEB-C3B7FBED5C6B}" Namespace="Tc3_Mc3PlanarMotion" IecLibraryType="true" AutoDeleteType="true">CDT_MCTOPLC_PLANAR_MOVER</Name>
 			<Comment><![CDATA[ Contains the information of the Planar Mover passed from MC to PLC. ]]></Comment>
 			<BitSize>320</BitSize>
@@ -13729,7 +13720,7 @@
 		</Motion>
 		<Plc>
 			<Project GUID="{41E96363-1266-4F60-9A10-2A85A07BF7FB}" Name="PLC1" PrjFilePath="PLC1\PLC1.plcproj" TmcFilePath="PLC1\PLC1.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{D6C77001-D4E5-AF4E-C5A5-468021FC31E2}" TmcPath="PLC1\PLC1.tmc">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{17620829-754E-B9C8-DEBC-647FA6730E5E}" TmcPath="PLC1\PLC1.tmc">
 					<Name>PLC1 Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="2" AreaNo="1">
@@ -13764,10 +13755,6 @@
 							<Name>XPlanar.Group.MCTOPLC_STD</Name>
 							<Comment><![CDATA[ Group data that is transferred from the Planar Group to this function block. ]]></Comment>
 							<Type GUID="{E06D295F-3D94-4B18-B587-C89D73DA41F4}" Namespace="MC">CDT_MCTOPLC_GROUP_PLANAR</Type>
-						</Var>
-						<Var>
-							<Name>MAIN.Inputs</Name>
-							<Type GUID="{71B58F72-0E49-50EB-B8E4-1CCD027538EC}">ARRAY [1..8] OF BOOL</Type>
 						</Var>
 						<Var>
 							<Name>MAIN.XPlanarTable.Movers[1]._Mover.MCTOPLC</Name>

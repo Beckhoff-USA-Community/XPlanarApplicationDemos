@@ -22,7 +22,7 @@ END_VAR]]></Declaration>
         <ST><![CDATA[SimulateTimer(IN := Mover <> 0, PT := _ProcessTime);
 IF SimulateTimer.Q THEN
 	SimulateTimer(IN := FALSE);
-	Execute := TRUE;
+	Execute := TRUE; //Set Execute to TRUE when process is complete and station base will send mover to next station.
 END_IF
 ]]></ST>
       </Implementation>
