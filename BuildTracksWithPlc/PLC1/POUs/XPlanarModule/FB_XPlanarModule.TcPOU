@@ -1,0 +1,308 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_XPlanarModule" Id="{fc8a5627-8159-4948-be60-7bb109013f17}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XPlanarModule
+VAR CONSTANT
+	MoverCount	 : UDINT := 1;
+	TrackCount	 : UDINT := 2;
+END_VAR
+
+VAR
+	XPlanarSystem	: FB_Component_XPlanar;
+	Movers			: ARRAY[1..MoverCount] OF FB_XPlanarMover;
+	Tracks			: ARRAY[1..TrackCount] OF FB_XPlanarTrackSegment;
+	InitState		: (CheckForXPlanarInit, UpdateDynamics, SetStationParameters, Initialized);
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+]]></ST>
+    </Implementation>
+    <Method Name="BuildTracks" Id="{79d801d5-f30c-424a-846f-ff3ec3201914}">
+      <Declaration><![CDATA[METHOD BuildTracks : BOOL
+
+VAR_INST
+	TrackIndex	: UDINT;
+	TaskResult	: I_PlanarTaskResult;
+END_VAR
+
+VAR
+	i : UDINT;
+	AllTracksCleared	: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE TrackIndex OF
+	0:
+		//Clear any old track data
+		AllTracksCleared := TRUE;
+		FOR i := 1 TO TrackCount DO
+			TaskResult := Tracks[i].Clear();
+			IF NOT TaskResult.Done THEN
+				AllTracksCleared := FALSE;
+			END_IF
+		END_FOR
+
+		IF AllTracksCleared THEN
+			TrackIndex := 1;
+		END_IF
+
+// *You can add up to 20 geometric items by default.  If more are required you can increase the value in SystemParameters
+	1: //Add geometric points for track 1.  
+		//
+		Tracks[TrackIndex].Definition.Items[1].ItemType := XPlanarApplication.E_TrackItemType.Line;
+		Tracks[TrackIndex].Definition.Items[1].StartPoint.SetValuesXY(180, 320);
+		Tracks[TrackIndex].Definition.Items[1].EndPoint.SetValuesXY(180, 100);
+
+		//
+		Tracks[TrackIndex].Definition.Items[2].ItemType := XPlanarApplication.E_TrackItemType.Line;
+		Tracks[TrackIndex].Definition.Items[2].StartPoint.SetValuesXY(140, 60);
+		Tracks[TrackIndex].Definition.Items[2].EndPoint.SetValuesXY(100, 60);
+
+		//Build the track segment with the configured points
+		TaskResult := Tracks[TrackIndex].Build();
+		
+		//If Successful move on to the next segment
+		IF TaskResult.Done THEN
+			IF TrackIndex < TrackCount THEN
+				TrackIndex := TrackIndex + 1;
+			ELSE
+				TrackIndex	:= 0;	 //Reset the Index var
+				BuildTracks := TRUE; //Return TRUE that all tracks were built successfully
+			END_IF
+		END_IF
+
+	2: //Add geometric points for track 2
+		//
+		Tracks[TrackIndex].Definition.Items[1].ItemType := XPlanarApplication.E_TrackItemType.Line;
+		Tracks[TrackIndex].Definition.Items[1].StartPoint.SetValuesXY(60, 100);
+		Tracks[TrackIndex].Definition.Items[1].EndPoint.SetValuesXY(60, 320);
+
+		//
+		Tracks[TrackIndex].Definition.Items[2].ItemType := XPlanarApplication.E_TrackItemType.Line;
+		Tracks[TrackIndex].Definition.Items[2].StartPoint.SetValuesXY(100, 360);
+		Tracks[TrackIndex].Definition.Items[2].EndPoint.SetValuesXY(140, 360);
+
+		//Set any connecting tracks for this segment.  Segments must already be built!
+		Tracks[TrackIndex].Definition.StartFromTrackID := 1;
+		Tracks[TrackIndex].Definition.EndAtTrackID	   := 1;
+
+		//Build the track segment with the configured points
+		TaskResult := Tracks[TrackIndex].Build();
+		
+		//If Successful move on to the next segment
+		IF TaskResult.Done THEN
+			IF TrackIndex < TrackCount THEN
+				TrackIndex := TrackIndex + 1;
+			ELSE
+				TrackIndex	:= 0;	 //Reset the Index var
+				BuildTracks := TRUE; //Return TRUE that all tracks were built successfully
+			END_IF
+		END_IF
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CyclicLogic" Id="{29a5b2a6-b906-481e-b2a5-9e6b8b00dcb1}">
+      <Declaration><![CDATA[METHOD CyclicLogic : BOOL
+VAR
+	i : UDINT;
+END_VAR
+VAR_INST
+	TaskResult	: I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[XPlanarSystem.CyclicLogic();
+IF NOT XPlanarSystem.Initialized THEN
+	RETURN;
+END_IF
+
+//Add any logic that needs to be called every cycle here]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Disable" Id="{bea64788-04c2-46d8-901f-da40359402f9}">
+      <Declaration><![CDATA[METHOD Disable : BOOL
+VAR_INST
+	CommandResult	: I_PlanarTaskResult;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CommandResult := XPlanarSystem.Abort(); // Stop Motion and Disable All Movers
+IF CommandResult.Done THEN
+	Disable := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute" Id="{e9c18260-d963-4b3b-9ac1-c7c999f6e501}">
+      <Declaration><![CDATA[METHOD Execute : BOOL
+VAR
+	i : UDINT;
+END_VAR
+
+VAR_INST
+	runloop: BOOL := TRUE;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//The XPlanar system is now 'running' put necessary run logic here
+
+IF runloop THEN
+	Movers[1].MoveCommand.TrackMoveXY(120, 60, 150, Tracks[1], XPlanarApplication.MC_DIRECTION.mcDirectionPositive);
+	runloop := FALSE;
+END_IF
+
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialize" Id="{68346b41-b68e-48f0-9612-b8cb0e4f6801}">
+      <Declaration><![CDATA[METHOD Initialize : BOOL
+VAR_INST
+	i			: UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE InitState OF
+	CheckForXPlanarInit: // Init Vars
+		Initialize := FALSE;
+		
+		//Make sure the XPlanar motion system has initialized
+		IF XPlanarSystem.Initialized THEN
+			InitState := UpdateDynamics;
+		END_IF
+
+	UpdateDynamics: 
+		//Assign Initial Application Mover Dynamics
+		FOR i := 1 TO XPlanar.MoverCount DO
+			ip.Movers[i].Gap						:= 200;
+			ip.Movers[i].Dynamics.Movement.Velocity := GVL.MoverVelo;
+			ip.Movers[i].Dynamics.Movement.Accel	:= GVL.MoverVelo * 10;
+			ip.Movers[i].Dynamics.Movement.Decel	:= GVL.MoverVelo * 10;
+			ip.Movers[i].Dynamics.Movement.Jerk		:= GVL.MoverVelo * 100;
+			ip.Movers[i].Dynamics.Rotation.Velocity := GVL.MoverSpinVelo;
+			ip.Movers[i].Dynamics.Rotation.Accel	:= GVL.MoverSpinVelo * 10;
+			ip.Movers[i].Dynamics.Rotation.Decel	:= GVL.MoverSpinVelo * 10;
+			ip.Movers[i].Dynamics.Rotation.Jerk		:= GVL.MoverSpinVelo * 100;
+		END_FOR
+
+		InitState := Initialized;
+
+	Initialized: // Init Complete
+		Initialize := TRUE;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Recovery" Id="{a9841bea-60cb-426f-bc44-b8cede3e8fbc}">
+      <Declaration><![CDATA[METHOD Recovery : BOOL
+VAR_INST
+	RecoverState	: UDINT;
+	ipResult		: ARRAY[1..MoverCount] OF I_PlanarTaskResult;
+	ErrorMoverId, i : UDINT;
+	ItemsOk			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//This is an example of some very simple mover recovery.  
+//What needs to be done to recover will be unique for each application.
+
+CASE RecoverState OF
+	0: // Init Vars
+		Recovery := FALSE;
+		i := 1;
+		NextStep(RecoverState);
+		
+	10: // All Movers Join rack closest to their current location
+		IF i <= XPlanar.MoverCount THEN
+			ipResult[i] := ip.Movers[i].MoveCommand.JoinClosestTrack(FALSE);
+			IF ipResult[i].Done THEN
+				NextMinorStep(RecoverState);
+			ELSIF ipResult[i].Error THEN
+				ErrorStep(RecoverState);
+			END_IF
+		ELSE
+			i := 1;
+			NextStep(RecoverState);
+		END_IF
+
+	11: //Check Mover Count
+		IF i <= XPlanar.MoverCount THEN
+			i	   := i + 1;
+			RecoverState := 10;
+		ELSE
+			i := 1;
+			NextStep(RecoverState);
+		END_IF
+
+	20: // Complete
+		RecoverState		 := 0;
+		ErrorMoverId := 0;
+		Recovery	 := TRUE;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{77b1ac13-4d41-4ec9-b757-dd7d7db44fa5}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+VAR_INST
+	ResetState	  : UDINT;
+	i			  : UDINT;
+	ResetOk		  : BOOL;
+	ResetError	  : BOOL;
+	CommandResult : I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE ResetState OF
+	0: // Init Vars
+		Reset := FALSE;
+		NextStep(ResetState);
+
+	10: // Reset Table 
+		IF XPlanarSystem.Reset().Done THEN
+			NextStep(ResetState);
+		END_IF
+		
+	20: //Build Track Segments
+		IF BuildTracks() THEN
+			NextStep(ResetState);
+		END_IF
+
+	30: // Enable Movers
+		CommandResult := XPlanarSystem.EnableMovers();
+		IF CommandResult.Done THEN
+			NextStep(ResetState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResetState);
+		END_IF
+
+	40: // Add Movers To Group
+		CommandResult := XPlanarSystem.AddMoversToGroup();
+		IF CommandResult.Done THEN
+			NextStep(ResetState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResetState);
+		END_IF
+
+	50: // Enable Tracks
+		CommandResult := XPlanarSystem.EnableTracks();
+		IF CommandResult.Done THEN
+			NextStep(ResetState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResetState);
+		END_IF
+
+	60: // Add Tracks To Group
+		CommandResult := XPlanarSystem.AddTracksToGroup();
+		IF CommandResult.Done THEN
+			NextStep(ResetState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResetState);
+		END_IF
+
+	70: // Enable Group
+		CommandResult := XPlanarSystem.EnableGroup();
+		IF CommandResult.Done THEN
+			NextStep(ResetState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResetState);
+		END_IF
+
+	80: // Complete
+		Reset  := TRUE;
+		ResetState := 0;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
