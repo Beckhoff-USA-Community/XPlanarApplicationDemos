@@ -1,0 +1,284 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_XPlanarModule" Id="{fc8a5627-8159-4948-be60-7bb109013f17}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_XPlanarModule
+VAR CONSTANT
+	MoverCount	 : UDINT := 2;
+	TrackCount	 : UDINT := 2;
+	StationCount : UDINT := 2;
+END_VAR
+
+VAR
+	XPlanarSystem	   : FB_Component_XPlanar;
+	Movers			   : ARRAY[1..MoverCount] OF FB_XPlanarMover;
+	Tracks			   : ARRAY[1..TrackCount] OF FB_XPlanarTrackSegment;
+	Stations		   : ARRAY[1..StationCount] OF FB_XPlanarStationBase;
+	ExtSetpointProcess : FB_ExtSetpointStation;
+	SimulateProcess	   : FB_SimulateProcess := (ProcessTime := 1.5);
+	InitState		   : (CheckForXPlanarInit, UpdateDynamics, SetStationParameters, Initialized);
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+]]></ST>
+    </Implementation>
+    <Method Name="CyclicLogic" Id="{29a5b2a6-b906-481e-b2a5-9e6b8b00dcb1}">
+      <Declaration><![CDATA[METHOD CyclicLogic : BOOL
+VAR
+	i : UDINT;
+END_VAR
+VAR_INST
+	MoverGapCheck: LREAL;
+	GlobalGapUpdate: BOOL;
+	testers	: UDINT;
+	TestMove	: BOOL;
+	TaskResult	: I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[XPlanarSystem.CyclicLogic();
+IF NOT XPlanarSystem.Initialized THEN
+	RETURN;
+END_IF
+
+//Add any logic that needs to be called every cycle here
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Disable" Id="{bea64788-04c2-46d8-901f-da40359402f9}">
+      <Declaration><![CDATA[METHOD Disable : BOOL
+VAR_INST
+	CommandResult	: I_PlanarTaskResult;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CommandResult := XPlanarSystem.Abort(); // Stop Motion and Disable All Movers
+IF CommandResult.Done THEN
+	Disable := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Execute" Id="{e9c18260-d963-4b3b-9ac1-c7c999f6e501}">
+      <Declaration><![CDATA[METHOD Execute : BOOL
+VAR
+	i : UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//The XPlanar system is now 'running' put necessary run logic here
+
+FOR i := 1 TO XPlanar.StationCount DO
+	Stations[i].Execute();
+END_FOR
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialize" Id="{68346b41-b68e-48f0-9612-b8cb0e4f6801}">
+      <Declaration><![CDATA[METHOD Initialize : BOOL
+VAR_INST
+	i			: UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE InitState OF
+	CheckForXPlanarInit: // Init Vars
+		Initialize := FALSE;
+		
+		//Make sure the XPlanar motion system has initialized
+		IF XPlanarSystem.Initialized THEN
+			InitState := UpdateDynamics;
+		END_IF
+
+	UpdateDynamics: // Assign Initial Application Mover Dynamics
+		FOR i := 1 TO XPlanar.MoverCount DO
+			ip.Movers[i].Gap						:= 200;
+			ip.Movers[i].Dynamics.Movement.Velocity := GVL.MoverVelo;
+			ip.Movers[i].Dynamics.Movement.Accel	:= GVL.MoverVelo * 10;
+			ip.Movers[i].Dynamics.Movement.Decel	:= GVL.MoverVelo * 10;
+			ip.Movers[i].Dynamics.Movement.Jerk		:= GVL.MoverVelo * 100;
+			ip.Movers[i].Dynamics.Rotation.Velocity := GVL.MoverSpinVelo;
+			ip.Movers[i].Dynamics.Rotation.Accel	:= GVL.MoverSpinVelo * 10;
+			ip.Movers[i].Dynamics.Rotation.Decel	:= GVL.MoverSpinVelo * 10;
+			ip.Movers[i].Dynamics.Rotation.Jerk		:= GVL.MoverSpinVelo * 100;
+		END_FOR
+
+		InitState := SetStationParameters;
+
+	SetStationParameters:
+		IF SetupStations() THEN
+			InitState := Initialized;
+		END_IF
+		
+		//Initialize station processes if necessary
+		ExtSetpointProcess.Initialize();
+
+	Initialized: // Init Complete
+		Initialize := TRUE;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Recovery" Id="{a9841bea-60cb-426f-bc44-b8cede3e8fbc}">
+      <Declaration><![CDATA[METHOD Recovery : BOOL
+VAR_INST
+	RecoverState	: UDINT;
+	ipResult		: ARRAY[1..MoverCount] OF I_PlanarTaskResult;
+	ErrorMoverId, i : UDINT;
+	ItemsOk			: BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE RecoverState OF
+	0: // Init Vars
+		Recovery := FALSE;
+		i := 1;
+		NextStep(RecoverState);
+		
+	10: // All Movers Join Closest Track
+		IF i <= XPlanar.MoverCount THEN
+			ipResult[i] := Movers[i].MoveCommand.JoinClosestTrack(FALSE);
+			IF ipResult[i].Done THEN
+				NextMinorStep(RecoverState);
+			ELSIF ipResult[i].Error THEN
+				ErrorStep(RecoverState);
+			END_IF
+		ELSE
+			i := 1;
+			NextStep(RecoverState);
+		END_IF
+
+	11: //Check Mover Count
+		IF i <= XPlanar.MoverCount THEN
+			i	   := i + 1;
+			RecoverState := 10;
+		ELSE
+			i := 1;
+			NextStep(RecoverState);
+		END_IF
+
+	20: // Sort and send Movers to Stations
+		FOR i := 1 TO XPlanar.MoverCount DO
+			ipResult[i] := Movers[i].MoveCommand.SendToStation(Stations[1]);
+		END_FOR
+
+		NextStep(RecoverState);
+
+	30: // Wait For Mover to Move
+		ItemsOk := TRUE;
+		FOR i := 1 TO XPlanar.MoverCount DO
+			IF NOT ipResult[i].Busy THEN
+				ItemsOk := FALSE;
+			END_IF
+
+			IF ipResult[i].Error THEN
+				ErrorMoverId := i;
+				ErrorStep(RecoverState);
+			END_IF
+		END_FOR
+
+		IF ItemsOk THEN
+			ErrorMoverId := 0;
+			NextStep(RecoverState);
+		END_IF
+
+	40: // Complete
+		RecoverState		 := 0;
+		ErrorMoverId := 0;
+		Recovery	 := TRUE;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{77b1ac13-4d41-4ec9-b757-dd7d7db44fa5}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+VAR_INST
+	ResettingState : UDINT;
+	i			   : UDINT;
+	ResetOk		   : BOOL;
+	ResetError	   : BOOL;
+	CommandResult  : I_PlanarTaskResult;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE ResettingState OF
+	0: // Init Vars
+		Reset := FALSE;
+		NextStep(ResettingState);
+
+	10: // Reset Table 
+		IF XPlanarSystem.Reset().Done THEN
+			NextStep(ResettingState);
+		END_IF
+
+	20: // Reset Stations
+		FOR i := 1 TO StationCount DO
+			ip.Stations[i].Reset();
+		END_FOR
+
+		NextStep(ResettingState);
+
+	30: // Enable Movers
+		CommandResult := XPlanarSystem.EnableMovers();
+		IF CommandResult.Done THEN
+			NextStep(ResettingState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResettingState);
+		END_IF
+
+	40: // Add Movers To Group
+		CommandResult := XPlanarSystem.AddMoversToGroup();
+		IF CommandResult.Done THEN
+			NextStep(ResettingState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResettingState);
+		END_IF
+
+	50: // Enable Tracks
+		CommandResult := XPlanarSystem.EnableTracks();
+		IF CommandResult.Done THEN
+			NextStep(ResettingState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResettingState);
+		END_IF
+
+	60: // Add Tracks To Group
+		CommandResult := XPlanarSystem.AddTracksToGroup();
+		IF CommandResult.Done THEN
+			NextStep(ResettingState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResettingState);
+		END_IF
+
+	70: // Enable Group
+		CommandResult := XPlanarSystem.EnableGroup();
+		IF CommandResult.Done THEN
+			NextStep(ResettingState);
+		ELSIF CommandResult.Error THEN
+			ErrorStep(ResettingState);
+		END_IF
+
+	80: // Complete
+		Reset  := TRUE;
+		ResettingState := 0;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetupStations" Id="{15ffb126-4413-4503-9c58-ae49f83f5dbf}">
+      <Declaration><![CDATA[METHOD PRIVATE SetupStations : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Setup Station 1
+Stations[1].ID := 1;
+Stations[1].TrackID := 1;
+Stations[1].Position.SetValuesXYC(120, 60, 0);
+Stations[1].NextStation := Stations[2];
+Stations[1].Process := SimulateProcess; //Assign a custom process to the station
+
+
+
+// Setup Station 2
+Stations[2].ID := 2;
+Stations[2].TrackID := 2;
+Stations[2].Position.SetValuesXYC(120, 360, 0);
+Stations[2].NextStation := Stations[1];
+Stations[2].Process := ExtSetpointProcess; //Assign a custom process to the station
+
+
+SetupStations:=TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

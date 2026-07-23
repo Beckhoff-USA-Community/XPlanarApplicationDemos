@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_SimulateProcess" Id="{e15be128-38cd-4b88-b277-99cc8805ba93}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_SimulateProcess IMPLEMENTS I_StationProcess
+VAR
+	_ProcessTime	: TIME;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Execute" Id="{55077361-cf1d-469f-9e7d-1a06c60a682a}">
+      <Declaration><![CDATA[METHOD Execute : BOOL
+VAR_INPUT
+	Mover	: XPlanarApplication.I_XPlanarMover;
+END_VAR
+
+VAR_INST
+	SimulateTimer: TON;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[SimulateTimer(IN := Mover <> 0, PT := _ProcessTime);
+IF SimulateTimer.Q THEN
+	SimulateTimer(IN := FALSE);
+	Execute := TRUE; //Set Execute to TRUE when process is complete and station base will send mover to next station.
+END_IF
+]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="ProcessTime" Id="{88016f18-daea-4c24-9e42-8f2f427351e2}">
+      <Declaration><![CDATA[PROPERTY ProcessTime : LREAL]]></Declaration>
+      <Set Name="Set" Id="{0ab05e10-a647-4e4f-9f04-f5905abf574e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_ProcessTime := TO_TIME(ProcessTime * 1000);]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="MAIN" Id="{12228e0f-a5a3-4f5a-be0a-75fae71d01ff}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	XPlanarTable  : FB_XPlanarModule;
+	Initialize	  : BOOL;
+	Reset		  : BOOL; // Reset and Execute System
+	Start		  : BOOL; // Run the system
+	Halt		  : BOOL; // Avoid Disabling while spinning, otherwise physical sqauring of mover is required
+	MachineState  : (Startup,
+		InitSystem,
+		ResetSystem,
+		Recover,
+		Ready,
+		Run,
+		Disable);
+	trig  : R_TRIG;
+	count: INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//This project is a bacis example that shows how to use the External Setpoint function of a mover 
+//in relative mode as a way to add some custom movement without leaving the track network
+//It is a working sample where the process attached to station 2 commands the mover away from the track and back before continuing to the next station
+//The External Setpoint logic is the Execute method of FB_ExtSetpointStation
+
+
+//Keep all XPlanar motion system objects up to date every cycle
+XPlanarTable.CyclicLogic();
+
+
+// "Machine" Sequence
+CASE MachineState OF
+	Startup:	
+		IF Initialize THEN
+			Initialize := FALSE;
+			MachineState := InitSystem;
+		END_IF
+	
+	InitSystem:	
+		IF XPlanarTable.Initialize() THEN
+			MachineState := ResetSystem;
+		END_IF
+	
+	ResetSystem:	
+		IF Reset AND_THEN XPlanarTable.Reset() THEN
+			Reset := FALSE;
+			MachineState := Recover;
+		END_IF
+	
+	Recover:	
+		IF XPlanarTable.Recovery() THEN
+			MachineState := Ready;
+		END_IF
+		
+	Ready:
+		IF Start THEN
+			MachineState := Run;
+		END_IF
+	
+	Run: 
+		XPlanarTable.Execute();
+	
+	Disable:	
+		IF XPlanarTable.Disable() THEN
+			MachineState := 0;
+		END_IF
+END_CASE
+
+IF Halt OR trig.Q THEN
+	MachineState := Disable;
+	Halt := FALSE;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

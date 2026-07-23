@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_ExtSetpointStation" Id="{2bb1edb0-4aac-4ac0-a475-2f5400fa3d30}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ExtSetpointStation IMPLEMENTS I_StationProcess
+VAR
+	//NC PTP Axis Vars
+	XAxisNc 		: AXIS_REF;
+	YAxisNc 		: AXIS_REF;
+	EnableXAxis 	: MC_Power;
+	EnableYAxis 	: MC_Power;
+	MoveXAxis		: MC_MoveAbsolute;
+	MoveYAxis		: MC_MoveAbsolute;
+	
+	XAxisVelo		: LREAL := 250;
+	YAxisVelo		: LREAL := 250;
+	XAxisPos		: LREAL;
+	YAxisPos		: LREAL;
+	XAxisMove		: BOOL;
+	YAxisMove		: BOOL;
+	
+	//Internal Vars
+	ProcessState 	: DINT;
+	movervector	 	: movervector;
+	initsequence	: DINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Execute" Id="{4866b0eb-9601-466f-b562-3f23bd45078e}">
+      <Declaration><![CDATA[METHOD Execute : BOOL
+VAR_INPUT
+	Mover	: XPlanarApplication.I_XPlanarMover;
+END_VAR
+
+VAR_INST
+	CommandResult 	: I_PlanarTaskResult;
+	MoverVectorPos 	: MoverVector;
+	MoverVectorVel 	: MoverVector;
+	MoverVectorAcc	: MoverVector;
+	RunExtSp		: BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+CASE ProcessState OF
+	0: //Init
+		//Could verify XAxis and YAxis are are valid starting positions here***
+		ProcessState := 10;
+
+	10: //Move to Target Position
+		XAxisPos  := 50;
+		YAxisPos  := 50;
+		XAxisMove := TRUE;
+		YAxisMove := TRUE;
+		RunExtSp  := TRUE;
+		IF MoveXAxis.Busy AND MoveYAxis.Busy THEN
+			XAxisMove	 := FALSE;
+			YAxisMove	 := FALSE;
+			ProcessState := 20;
+		END_IF
+
+	20: //Wait for NC move to complete
+		IF MoveXAxis.Done AND MoveYAxis.Done THEN
+			ProcessState := 30;
+		END_IF
+
+	30: //Return to Start Pos
+		XAxisPos  := 0;
+		YAxisPos  := 0;
+		XAxisMove := TRUE;
+		YAxisMove := TRUE;
+		RunExtSp  := TRUE;
+		IF MoveXAxis.Busy AND MoveYAxis.Busy THEN
+			XAxisMove	 := FALSE;
+			YAxisMove	 := FALSE;
+			ProcessState := 40;
+		END_IF
+
+	40: //Wait for NC move to complete
+		IF MoveXAxis.Done AND MoveYAxis.Done THEN
+			ProcessState := 50;
+		END_IF
+
+	50:
+		IF MoverVectorPos.x = 0 AND MoverVectorPos.y = 0 AND MoverVectorVel.x = 0 AND MoverVectorVel.y = 0 THEN
+			RunExtSp := FALSE;
+
+			//Take mover out of external setpoint mode
+			CommandResult := Mover.MoveCommand.StopExternalSp();
+			// program has finished
+			IF CommandResult.Done THEN
+				Execute := TRUE;
+				ProcessState := 0;
+			END_IF
+		END_IF
+END_CASE
+
+IF RunExtSp THEN
+	MoverVectorPos.x := XAxisNc.NcToPlc.SetPos;
+	MoverVectorPos.y := YAxisNc.NcToPlc.SetPos;
+	MoverVectorVel.x := XAxisNc.NcToPlc.SetVelo;
+	MoverVectorVel.y := YAxisNc.NcToPlc.SetVelo;
+	MoverVectorAcc.x := XAxisNc.NcToPlc.SetAcc;
+	MoverVectorAcc.y := YAxisNc.NcToPlc.SetAcc;
+	CommandResult	 := Mover.MoveCommand.RunExternalSpRelativeMode(MoverVectorPos, MoverVectorVel, MoverVectorAcc);
+END_IF
+
+//X Axis NC Move
+MoveXAxis(Axis		   := XAxisNc,
+		  Execute	   := XAxisMove,
+		  Position	   := XAxisPos,
+		  Velocity	   := XAxisVelo,
+		  Acceleration := XAxisVelo * 10,
+		  Deceleration := XAxisVelo * 10,
+		  Jerk		   := XAxisVelo * 100,
+		  BufferMode   := MC_BufferMode.MC_Aborting);
+
+//Y Axis NC Move
+MoveYAxis(Axis		   := YAxisNc,
+		  Execute	   := YAxisMove,
+		  Position	   := YAxisPos,
+		  Velocity	   := YAxisVelo,
+		  Acceleration := YAxisVelo * 10,
+		  Deceleration := YAxisVelo * 10,
+		  Jerk		   := YAxisVelo * 100,
+		  BufferMode   := MC_BufferMode.MC_Aborting);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Initialize" Id="{cf4f7a73-c627-4f2c-94b8-17bd6ffe2c57}">
+      <Declaration><![CDATA[(* Basic component initialization logic*)
+METHOD Initialize : BOOL
+
+VAR
+	
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE initsequence OF
+	0:
+		EnableXAxis(
+			Axis := XAxisNc,
+			Enable := TRUE,
+			Enable_Positive:= TRUE,
+			Enable_Negative:= TRUE,
+			Override := 100.0);
+		
+		EnableYAxis(
+			Axis := YAxisNc,
+			Enable := TRUE,
+			Enable_Positive:= TRUE,
+			Enable_Negative:= TRUE,
+			Override := 100.0);
+			
+		IF EnableXAxis.Status AND EnableYAxis.Status THEN
+			initsequence := 10;
+		END_IF
+		
+	10:
+	Initialize := TRUE;
+	
+END_CASE
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
