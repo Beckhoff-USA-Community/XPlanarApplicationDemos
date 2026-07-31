@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="GVL" Id="{a162ae6a-45c9-45a0-aa22-1e1fad1763da}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	// Mover Velocity
+	MoverVelo		: LREAL := 200;
+	MoverGap		: LREAL := 180; 
+	// Mover Rotation Velocity
+	MoverSpinVelo	: LREAL := 500;
+	// Station 2 Mover Index
+	Indx			: UDINT;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

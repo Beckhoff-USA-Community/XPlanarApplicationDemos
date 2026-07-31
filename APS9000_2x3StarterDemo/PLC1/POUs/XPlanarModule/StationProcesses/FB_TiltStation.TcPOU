@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_TiltStation" Id="{8fcfe811-8ffb-4ecf-ac90-349008eae4e5}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_TiltStation IMPLEMENTS I_StationProcess
+VAR
+	ProcessState	: UDINT;
+	CommandResult	: I_PlanarTaskResult;
+	CommandResult2	: I_PlanarTaskResult;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+]]></ST>
+    </Implementation>
+    <Method Name="Execute" Id="{ac2e1a85-102a-4d1a-b4bc-b1f2f617495b}">
+      <Declaration><![CDATA[METHOD Execute : BOOL
+VAR_INPUT
+	Mover	: XPlanarApplication.I_XPlanarMover;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[	CASE ProcessState OF
+		0: //Init sequence
+			NextStep(ProcessState);
+			
+		10:
+			CommandResult := Mover.MoveCommand.VerticalMove(5.0);
+			IF CommandResult.Done THEN
+				NextStep(ProcessState);
+			ELSIF CommandResult.Error THEN
+				; //Command returned an error!
+			END_IF
+
+		20:
+			CommandResult  := Mover.MoveCommand.TiltA(1.9);
+			CommandResult2 := Mover.MoveCommand.TiltB(1.9);
+			IF CommandResult.Done AND CommandResult2.Done then
+				NextStep(ProcessState);
+			ELSIF CommandResult.Error THEN
+				; //Command returned an error!
+			END_IF
+
+		30:
+			CommandResult  := Mover.MoveCommand.TiltA(1.9);
+			CommandResult2 := Mover.MoveCommand.TiltB(-1.9);
+			IF CommandResult.Done AND CommandResult2.Done then
+				NextStep(ProcessState);
+			ELSIF CommandResult.Error THEN
+				; //Command returned an error!
+			END_IF
+
+		40:
+			CommandResult  := Mover.MoveCommand.TiltA(-1.9);
+			CommandResult2 := Mover.MoveCommand.TiltB(1.9);
+			IF CommandResult.Done AND CommandResult2.Done then
+				NextStep(ProcessState);
+			ELSIF CommandResult.Error THEN
+				; //Command returned an error!
+			END_IF
+
+		50:
+			CommandResult  := Mover.MoveCommand.TiltA(0);
+			CommandResult2 := Mover.MoveCommand.TiltB(0);
+			IF CommandResult.Done AND CommandResult2.Done then
+				NextStep(ProcessState);
+			ELSIF CommandResult.Error THEN
+				; //Command returned an error!
+			END_IF
+
+		60:
+			CommandResult := Mover.MoveCommand.VerticalMove(2.0);
+			IF CommandResult.Done THEN
+				Execute := TRUE;
+				ProcessState := 0;
+			ELSIF CommandResult.Error THEN
+				; //Command returned an error!
+			END_IF
+	END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{6138941d-b7a1-46d9-a18e-0223a4973c66}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[ProcessState := 0;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
